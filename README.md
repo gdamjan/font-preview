@@ -40,3 +40,17 @@ Works in all modern browsers (Chrome, Firefox, Safari, Edge). Requires support f
 - `FontFace` API
 - `DataView` / `ArrayBuffer`
 - SVG `foreignObject` (for `locl` rendering)
+
+## What is the OS/2 table?
+
+The **OS/2** table is a required table in TrueType and OpenType fonts that contains metrics and properties needed by Windows (originally OS/2) for font selection and layout. Key fields include:
+
+- **fsSelection** — style flags (italic, bold, regular, etc.)
+- **usWeightClass** — weight (100=Thin … 700=Bold … 900=Black)
+- **usWidthClass** — stretch (condensed, normal, expanded)
+- **Panose** — 10-byte classification describing the font's visual style
+- **Unicode/codepage ranges** — bitmasks indicating which character sets the font supports
+- **Metrics** — typographic ascender, descender, line gap, x-height, cap height
+- **Vendor ID** — 4-character tag identifying the font vendor
+
+The name is historical — it dates back to IBM's OS/2 operating system, but it became the standard metadata table for all platforms.
