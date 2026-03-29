@@ -6,13 +6,13 @@ const canvasWrap = document.getElementById('canvas-wrap');
 const canvas = document.getElementById('preview');
 const ctx = canvas.getContext('2d');
 const fontSizeInput = document.getElementById('font-size');
-const fontColorSelect = document.getElementById('font-color');
 const charPresetSelect = document.getElementById('char-preset');
 const customCharsInput = document.getElementById('custom-chars');
 const customLabel = document.getElementById('custom-label');
 
 let loadedFontFamily = null;
 let loadedFontBuffer = null;
+let loadedCodepoints = new Set();
 let fontCounter = 0;
 
 const PRESETS = {
@@ -118,7 +118,69 @@ function parseFontMeta(buffer) {
     }
   }
 
-  return { italic, familyName, version };
+  // Parse cmap table to get supported codepoints
+  const supportedCodepoints = new Set();
+  if (tables['cmap']) {
+    const cmapOff = tables['cmap'].offset;
+    const numSubtables = view.getUint16(cmapOff + 2);
+
+    for (let i = 0; i < numSubtables; i++) {
+      const subOff = cmapOff + 4 + i * 8;
+      const platformID = view.getUint16(subOff);
+      const encodingID = view.getUint16(subOff + 2);
+      const subtableOffset = cmapOff + view.getUint32(subOff + 4);
+      const format = view.getUint16(subtableOffset);
+
+      // Format 4: Segment mapping to delta values (BMP)
+      if (format === 4 && ((platformID === 3 && encodingID === 1) || (platformID === 0))) {
+        const segCount = view.getUint16(subtableOffset + 6) / 2;
+        const endCodesOff = subtableOffset + 14;
+        const startCodesOff = endCodesOff + segCount * 2 + 2;
+        const idDeltaOff = startCodesOff + segCount * 2;
+        const idRangeOff = idDeltaOff + segCount * 2;
+
+        for (let s = 0; s < segCount; s++) {
+          const endCode = view.getUint16(endCodesOff + s * 2);
+          const startCode = view.getUint16(startCodesOff + s * 2);
+          const idDelta = view.getInt16(idDeltaOff + s * 2);
+          const idRangeOffset = view.getUint16(idRangeOff + s * 2);
+
+          if (startCode === 0xFFFF) break;
+
+          for (let c = startCode; c <= endCode; c++) {
+            let glyphIndex;
+            if (idRangeOffset === 0) {
+              glyphIndex = (c + idDelta) & 0xFFFF;
+            } else {
+              const rangeAddr = idRangeOff + s * 2 + idRangeOffset + (c - startCode) * 2;
+              glyphIndex = view.getUint16(rangeAddr);
+              if (glyphIndex !== 0) glyphIndex = (glyphIndex + idDelta) & 0xFFFF;
+            }
+            if (glyphIndex !== 0) supportedCodepoints.add(c);
+          }
+        }
+        if (supportedCodepoints.size > 0) break;
+      }
+
+      // Format 12: Segmented coverage (full Unicode)
+      if (format === 12) {
+        const numGroups = view.getUint32(subtableOffset + 12);
+        const groupsOff = subtableOffset + 16;
+        for (let g = 0; g < numGroups; g++) {
+          const startCharCode = view.getUint32(groupsOff + g * 12);
+          const endCharCode = view.getUint32(groupsOff + g * 12 + 4);
+          const startGlyphID = view.getUint32(groupsOff + g * 12 + 8);
+          for (let c = startCharCode; c <= endCharCode; c++) {
+            const glyphID = startGlyphID + (c - startCharCode);
+            if (glyphID !== 0) supportedCodepoints.add(c);
+          }
+        }
+        if (supportedCodepoints.size > 0) break;
+      }
+    }
+  }
+
+  return { italic, familyName, version, supportedCodepoints };
 }
 
 async function loadFont(file) {
@@ -143,6 +205,7 @@ async function loadFont(file) {
   document.fonts.add(face);
   loadedFontFamily = familyName;
   loadedFontBuffer = buffer;
+  loadedCodepoints = meta.supportedCodepoints;
 
   const sizeKB = (file.size / 1024).toFixed(1);
   const italicLabel = meta.italic === null ? 'Unknown' : (meta.italic ? 'Yes' : 'No');
@@ -178,27 +241,26 @@ function render() {
 
 function renderSimple() {
   const fontSize = parseInt(fontSizeInput.value) || 48;
-  const color = fontColorSelect.value;
-  const chars = getChars();
+  const chars = [...getChars()];
   const padding = 20;
   const lineHeight = fontSize * 1.4;
   const maxWidth = 760;
 
   ctx.font = `${fontSize}px "${loadedFontFamily}"`;
 
-  const lines = [];
-  let currentLine = '';
+  // Break into lines of {char, supported} objects
+  const lines = [[]];
+  let lineWidth = 0;
   for (const ch of chars) {
-    const test = currentLine + ch;
-    const w = ctx.measureText(test).width;
-    if (w > maxWidth - padding * 2 && currentLine.length > 0) {
-      lines.push(currentLine);
-      currentLine = ch;
-    } else {
-      currentLine = test;
+    const w = ctx.measureText(ch).width;
+    if (lineWidth + w > maxWidth - padding * 2 && lines[lines.length - 1].length > 0) {
+      lines.push([]);
+      lineWidth = 0;
     }
+    const supported = loadedCodepoints.size === 0 || loadedCodepoints.has(ch.codePointAt(0));
+    lines[lines.length - 1].push({ ch, supported });
+    lineWidth += w;
   }
-  if (currentLine) lines.push(currentLine);
 
   const canvasHeight = Math.ceil(padding * 2 + lines.length * lineHeight);
   const canvasWidth = maxWidth;
@@ -210,19 +272,23 @@ function renderSimple() {
   ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
   ctx.font = `${fontSize}px "${loadedFontFamily}"`;
-  ctx.fillStyle = color;
   ctx.textBaseline = 'top';
 
   lines.forEach((line, i) => {
-    ctx.fillText(line, padding, padding + i * lineHeight);
+    let x = padding;
+    const y = padding + i * lineHeight;
+    for (const { ch, supported } of line) {
+      ctx.fillStyle = supported ? '#000000' : '#e74c3c';
+      ctx.fillText(ch, x, y);
+      x += ctx.measureText(ch).width;
+    }
   });
 }
 
 // Render via SVG foreignObject to enable OpenType locl feature
 async function renderWithLocl() {
   const fontSize = parseInt(fontSizeInput.value) || 48;
-  const color = fontColorSelect.value;
-  const chars = getChars();
+  const chars = [...getChars()];
   const padding = 20;
   const lineHeight = fontSize * 1.5;
   const canvasWidth = 760;
@@ -233,11 +299,12 @@ async function renderWithLocl() {
   const base64Font = arrayBufferToBase64(loadedFontBuffer);
   const dataUrl = `data:font/opentype;base64,${base64Font}`;
 
-  // Escape special XML characters in the text
-  const safeChars = chars
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  // Build HTML with per-character coloring for unsupported glyphs
+  const spanChars = chars.map(ch => {
+    const safe = ch.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const supported = loadedCodepoints.size === 0 || loadedCodepoints.has(ch.codePointAt(0));
+    return supported ? safe : `<span style="color:#e74c3c">${safe}</span>`;
+  }).join('');
 
   const svgMarkup = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${canvasWidth}" height="${canvasHeight}">
@@ -253,14 +320,14 @@ async function renderWithLocl() {
             font-family: 'LoclFont';
             font-size: ${fontSize}px;
             line-height: ${lineHeight}px;
-            color: ${color};
+            color: #000000;
             font-feature-settings: 'locl';
             padding: ${padding}px;
             background: white;
             width: ${canvasWidth}px;
             height: ${canvasHeight}px;
             box-sizing: border-box;
-          ">${safeChars}</div>
+          ">${spanChars}</div>
         </div>
       </foreignObject>
     </svg>`;
@@ -288,7 +355,6 @@ async function renderWithLocl() {
 
 // Re-render on control changes
 fontSizeInput.addEventListener('input', render);
-fontColorSelect.addEventListener('change', render);
 charPresetSelect.addEventListener('change', () => {
   customLabel.style.display = charPresetSelect.value === 'custom' ? '' : 'none';
   render();
