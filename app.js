@@ -13,6 +13,7 @@ const customLabel = document.getElementById('custom-label');
 let loadedFontFamily = null;
 let loadedFontBuffer = null;
 let loadedCodepoints = new Set();
+let loadedLoclCodepoints = new Set();
 let fontCounter = 0;
 
 const PRESETS = {
@@ -118,8 +119,9 @@ function parseFontMeta(buffer) {
     }
   }
 
-  // Parse cmap table to get supported codepoints
+  // Build reverse cmap: glyph ID → codepoint (first mapping wins)
   const supportedCodepoints = new Set();
+  const glyphToCodepoint = new Map();
   if (tables['cmap']) {
     const cmapOff = tables['cmap'].offset;
     const numSubtables = view.getUint16(cmapOff + 2);
@@ -131,7 +133,6 @@ function parseFontMeta(buffer) {
       const subtableOffset = cmapOff + view.getUint32(subOff + 4);
       const format = view.getUint16(subtableOffset);
 
-      // Format 4: Segment mapping to delta values (BMP)
       if (format === 4 && ((platformID === 3 && encodingID === 1) || (platformID === 0))) {
         const segCount = view.getUint16(subtableOffset + 6) / 2;
         const endCodesOff = subtableOffset + 14;
@@ -144,7 +145,6 @@ function parseFontMeta(buffer) {
           const startCode = view.getUint16(startCodesOff + s * 2);
           const idDelta = view.getInt16(idDeltaOff + s * 2);
           const idRangeOffset = view.getUint16(idRangeOff + s * 2);
-
           if (startCode === 0xFFFF) break;
 
           for (let c = startCode; c <= endCode; c++) {
@@ -156,13 +156,15 @@ function parseFontMeta(buffer) {
               glyphIndex = view.getUint16(rangeAddr);
               if (glyphIndex !== 0) glyphIndex = (glyphIndex + idDelta) & 0xFFFF;
             }
-            if (glyphIndex !== 0) supportedCodepoints.add(c);
+            if (glyphIndex !== 0) {
+              supportedCodepoints.add(c);
+              if (!glyphToCodepoint.has(glyphIndex)) glyphToCodepoint.set(glyphIndex, c);
+            }
           }
         }
         if (supportedCodepoints.size > 0) break;
       }
 
-      // Format 12: Segmented coverage (full Unicode)
       if (format === 12) {
         const numGroups = view.getUint32(subtableOffset + 12);
         const groupsOff = subtableOffset + 16;
@@ -172,7 +174,10 @@ function parseFontMeta(buffer) {
           const startGlyphID = view.getUint32(groupsOff + g * 12 + 8);
           for (let c = startCharCode; c <= endCharCode; c++) {
             const glyphID = startGlyphID + (c - startCharCode);
-            if (glyphID !== 0) supportedCodepoints.add(c);
+            if (glyphID !== 0) {
+              supportedCodepoints.add(c);
+              if (!glyphToCodepoint.has(glyphID)) glyphToCodepoint.set(glyphID, c);
+            }
           }
         }
         if (supportedCodepoints.size > 0) break;
@@ -180,7 +185,121 @@ function parseFontMeta(buffer) {
     }
   }
 
-  return { italic, familyName, version, supportedCodepoints };
+  // Parse GSUB locl feature for Macedonian (cyrl/MKD) to find which codepoints have localized forms
+  const loclCodepoints = new Set();
+  if (tables['GSUB']) {
+    try {
+      const gsubOff = tables['GSUB'].offset;
+      const scriptListOff = gsubOff + view.getUint16(gsubOff + 4);
+      const featureListOff = gsubOff + view.getUint16(gsubOff + 6);
+      const lookupListOff = gsubOff + view.getUint16(gsubOff + 8);
+
+      // Find 'cyrl' script
+      const scriptCount = view.getUint16(scriptListOff);
+      let cyrlScriptOff = null;
+      for (let i = 0; i < scriptCount; i++) {
+        const recOff = scriptListOff + 2 + i * 6;
+        const tag = String.fromCharCode(
+          view.getUint8(recOff), view.getUint8(recOff+1),
+          view.getUint8(recOff+2), view.getUint8(recOff+3)
+        );
+        if (tag === 'cyrl') {
+          cyrlScriptOff = scriptListOff + view.getUint16(recOff + 4);
+          break;
+        }
+      }
+
+      if (cyrlScriptOff !== null) {
+        // Find 'MKD ' language system, fall back to default
+        const defaultLangSysOff = view.getUint16(cyrlScriptOff);
+        const langSysCount = view.getUint16(cyrlScriptOff + 2);
+        let langSysOff = defaultLangSysOff ? cyrlScriptOff + defaultLangSysOff : null;
+
+        for (let i = 0; i < langSysCount; i++) {
+          const recOff = cyrlScriptOff + 4 + i * 6;
+          const tag = String.fromCharCode(
+            view.getUint8(recOff), view.getUint8(recOff+1),
+            view.getUint8(recOff+2), view.getUint8(recOff+3)
+          );
+          if (tag === 'MKD ') {
+            langSysOff = cyrlScriptOff + view.getUint16(recOff + 4);
+            break;
+          }
+        }
+
+        if (langSysOff !== null) {
+          // Get feature indices from language system
+          const featureIndexCount = view.getUint16(langSysOff + 4);
+          const featureIndices = [];
+          for (let i = 0; i < featureIndexCount; i++) {
+            featureIndices.push(view.getUint16(langSysOff + 6 + i * 2));
+          }
+
+          // Find 'locl' feature among those indices
+          const featureCount = view.getUint16(featureListOff);
+          for (const fi of featureIndices) {
+            if (fi >= featureCount) continue;
+            const featureRecOff = featureListOff + 2 + fi * 6;
+            const featureTag = String.fromCharCode(
+              view.getUint8(featureRecOff), view.getUint8(featureRecOff+1),
+              view.getUint8(featureRecOff+2), view.getUint8(featureRecOff+3)
+            );
+            if (featureTag !== 'locl') continue;
+
+            const featureTableOff = featureListOff + view.getUint16(featureRecOff + 4);
+            const lookupIndexCount = view.getUint16(featureTableOff + 2);
+
+            for (let li = 0; li < lookupIndexCount; li++) {
+              const lookupIndex = view.getUint16(featureTableOff + 4 + li * 2);
+              const lookupOff = lookupListOff + view.getUint16(lookupListOff + 2 + lookupIndex * 2);
+              const lookupType = view.getUint16(lookupOff);
+              const subtableCount = view.getUint16(lookupOff + 4);
+
+              for (let si = 0; si < subtableCount; si++) {
+                const subtableOff = lookupOff + view.getUint16(lookupOff + 6 + si * 2);
+                const substFormat = view.getUint16(subtableOff);
+
+                // SingleSubst (type 1) — the typical locl lookup type
+                if (lookupType === 1) {
+                  const coverageOff = subtableOff + view.getUint16(subtableOff + 2);
+                  const coveredGlyphs = parseCoverage(view, coverageOff);
+                  for (const gid of coveredGlyphs) {
+                    const cp = glyphToCodepoint.get(gid);
+                    if (cp !== undefined) loclCodepoints.add(cp);
+                  }
+                }
+              }
+            }
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('GSUB locl parsing failed:', e);
+    }
+  }
+
+  return { italic, familyName, version, supportedCodepoints, loclCodepoints };
+}
+
+// Parse an OpenType Coverage table, returning an array of glyph IDs
+function parseCoverage(view, offset) {
+  const format = view.getUint16(offset);
+  const glyphs = [];
+  if (format === 1) {
+    const count = view.getUint16(offset + 2);
+    for (let i = 0; i < count; i++) {
+      glyphs.push(view.getUint16(offset + 4 + i * 2));
+    }
+  } else if (format === 2) {
+    const rangeCount = view.getUint16(offset + 2);
+    for (let i = 0; i < rangeCount; i++) {
+      const start = view.getUint16(offset + 4 + i * 6);
+      const end = view.getUint16(offset + 4 + i * 6 + 2);
+      for (let g = start; g <= end; g++) glyphs.push(g);
+    }
+  }
+  return glyphs;
 }
 
 async function loadFont(file) {
@@ -206,11 +325,13 @@ async function loadFont(file) {
   loadedFontFamily = familyName;
   loadedFontBuffer = buffer;
   loadedCodepoints = meta.supportedCodepoints;
+  loadedLoclCodepoints = meta.loclCodepoints;
 
   const sizeKB = (file.size / 1024).toFixed(1);
   const italicLabel = meta.italic === null ? 'Unknown' : (meta.italic ? 'Yes' : 'No');
   const versionLabel = meta.version || 'Unknown';
-  fontInfo.innerHTML = `<strong>Loaded:</strong> ${file.name} (${sizeKB} KB) — Family: <em>${familyName}</em> — Version: <em>${versionLabel}</em> — Italic: <em>${italicLabel}</em>`;
+  const hasLocl = meta.loclCodepoints.size > 0 ? 'Yes' : 'No';
+  fontInfo.innerHTML = `<strong>Loaded:</strong> ${file.name} (${sizeKB} KB) — Family: <em>${familyName}</em> — Version: <em>${versionLabel}</em> — Italic: <em>${italicLabel}</em> — MKD locl: <em>${hasLocl}</em>`;
   controls.style.display = 'flex';
   canvasWrap.style.display = 'block';
 
@@ -299,11 +420,14 @@ async function renderWithLocl() {
   const base64Font = arrayBufferToBase64(loadedFontBuffer);
   const dataUrl = `data:font/opentype;base64,${base64Font}`;
 
-  // Build HTML with per-character coloring for unsupported glyphs
+  // Build HTML with per-character coloring: red if not in font or missing locl substitution
   const spanChars = chars.map(ch => {
     const safe = ch.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const supported = loadedCodepoints.size === 0 || loadedCodepoints.has(ch.codePointAt(0));
-    return supported ? safe : `<span style="color:#e74c3c">${safe}</span>`;
+    const cp = ch.codePointAt(0);
+    const inFont = loadedCodepoints.size === 0 || loadedCodepoints.has(cp);
+    const hasLocl = loadedLoclCodepoints.size === 0 || loadedLoclCodepoints.has(cp);
+    const ok = inFont && hasLocl;
+    return ok ? safe : `<span style="color:#e74c3c">${safe}</span>`;
   }).join('');
 
   const svgMarkup = `
