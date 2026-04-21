@@ -21,9 +21,9 @@
  * @throws {Error} If the file extension is not a supported font format.
  */
 export async function loadFont(hb, file) {
-  const ext = file.name.split('.').pop().toLowerCase();
-  if (!['ttf', 'otf', 'woff', 'woff2'].includes(ext)) {
-    throw new Error('Unsupported file type. Please use .ttf, .otf, .woff, or .woff2');
+  const ext = file.name.split(".").pop().toLowerCase();
+  if (!["ttf", "otf", "woff", "woff2"].includes(ext)) {
+    throw new Error("Unsupported file type. Please use .ttf, .otf, .woff, or .woff2");
   }
 
   const fontBuffer = await file.bytes();
@@ -32,17 +32,17 @@ export async function loadFont(hb, file) {
   const face = hb.createFace(blob, 0);
   const font = hb.createFont(face);
 
-  const familyName = face.getName(1, 'en') || face.getName(1, '') || file.name;
-  const version = face.getName(5, 'en') || face.getName(5, '') || 'Unknown';
+  const familyName = face.getName(1, "en") || face.getName(1, "") || file.name;
+  const version = face.getName(5, "en") || face.getName(5, "") || "Unknown";
 
   // Discover which script/language combinations have a 'locl' feature
   const loclLangs = [];
-  const scripts = face.getTableScriptTags('GSUB');
+  const scripts = face.getTableScriptTags("GSUB");
   scripts.forEach((script, si) => {
-    const langs = face.getScriptLanguageTags('GSUB', si);
+    const langs = face.getScriptLanguageTags("GSUB", si);
     langs.forEach((lang, li) => {
-      const features = face.getLanguageFeatureTags('GSUB', si, li);
-      if (features.includes('locl')) {
+      const features = face.getLanguageFeatureTags("GSUB", si, li);
+      if (features.includes("locl")) {
         loclLangs.push({ script: script.trim(), lang: lang.trim() });
       }
     });

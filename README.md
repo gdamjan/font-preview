@@ -35,7 +35,7 @@ pnpm serve       # serve dist/ locally
 ## Browser support
 
 Works in all modern browsers (Chrome, Firefox, Safari, Edge). Requires support for:
+
 - WebAssembly
 - Canvas `Path2D` with SVG path data
 - `DataView` / `ArrayBuffer`
-

@@ -1,4 +1,8 @@
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 body {
   font-family: system-ui, sans-serif;
   background: #1a1a2e;
@@ -9,7 +13,11 @@ body {
   align-items: center;
   padding: 2rem;
 }
-h1 { margin-bottom: 1rem; font-size: 1.6rem; color: #e8e8ff; }
+h1 {
+  margin-bottom: 1rem;
+  font-size: 1.6rem;
+  color: #e8e8ff;
+}
 
 #drop-zone {
   width: 100%;
@@ -18,17 +26,25 @@ h1 { margin-bottom: 1rem; font-size: 1.6rem; color: #e8e8ff; }
   border-radius: 12px;
   padding: 3rem 2rem;
   text-align: center;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
   cursor: pointer;
   margin-bottom: 1.5rem;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255, 0.03);
 }
 #drop-zone.hover {
   border-color: #7b68ee;
-  background: rgba(123,104,238,0.08);
+  background: rgba(123, 104, 238, 0.08);
 }
-#drop-zone p { font-size: 1.1rem; color: #aaa; }
-#drop-zone .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+#drop-zone p {
+  font-size: 1.1rem;
+  color: #aaa;
+}
+#drop-zone .icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
 
 #font-info {
   max-width: 800px;
@@ -47,8 +63,12 @@ h1 { margin-bottom: 1rem; font-size: 1.6rem; color: #e8e8ff; }
   flex-wrap: wrap;
   align-items: center;
 }
-#controls label { font-size: 0.9rem; color: #ccc; }
-#controls input[type="number"], #controls input[type="text"] {
+#controls label {
+  font-size: 0.9rem;
+  color: #ccc;
+}
+#controls input[type="number"],
+#controls input[type="text"] {
   background: #2a2a3e;
   border: 1px solid #444;
   color: #e0e0e0;
@@ -56,8 +76,14 @@ h1 { margin-bottom: 1rem; font-size: 1.6rem; color: #e8e8ff; }
   border-radius: 6px;
   font-size: 0.9rem;
 }
-#controls input[type="number"] { width: 70px; }
-#controls input[type="text"] { width: 100%; flex: 1; min-width: 200px; }
+#controls input[type="number"] {
+  width: 70px;
+}
+#controls input[type="text"] {
+  width: 100%;
+  flex: 1;
+  min-width: 200px;
+}
 #controls select {
   background: #2a2a3e;
   border: 1px solid #444;
@@ -77,8 +103,13 @@ h1 { margin-bottom: 1rem; font-size: 1.6rem; color: #e8e8ff; }
   transition: background 0.15s;
   white-space: nowrap;
 }
-#copy-btn:hover { background: #3a3a5e; }
-#copy-btn.copied { background: #2e7d32; border-color: #4caf50; }
+#copy-btn:hover {
+  background: #3a3a5e;
+}
+#copy-btn.copied {
+  background: #2e7d32;
+  border-color: #4caf50;
+}
 
 #canvas-wrap {
   max-width: 800px;
@@ -88,6 +119,10 @@ h1 { margin-bottom: 1rem; font-size: 1.6rem; color: #e8e8ff; }
   overflow: auto;
   display: none;
 }
-canvas { display: block; }
+canvas {
+  display: block;
+}
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}

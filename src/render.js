@@ -26,7 +26,7 @@
  *   segment properties automatically.
  */
 export function render(hb, canvas, fontBuffer, { fontSize, text, loclValue }) {
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext("2d");
   const padding = 20;
   const maxWidth = 760;
 
@@ -44,13 +44,13 @@ export function render(hb, canvas, fontBuffer, { fontSize, text, loclValue }) {
   // Shape the text
   const buffer = hb.createBuffer();
   buffer.addText(text);
-  let features = '';
+  let features = "";
   if (loclValue) {
-    const [script, lang] = loclValue.split('/');
+    const [script, lang] = loclValue.split("/");
     buffer.setScript(script);
     buffer.setLanguage(lang);
-    buffer.setDirection('ltr');
-    features = 'locl';
+    buffer.setDirection("ltr");
+    features = "locl";
   } else {
     buffer.guessSegmentProperties();
   }
@@ -78,9 +78,9 @@ export function render(hb, canvas, fontBuffer, { fontSize, text, loclValue }) {
 
   canvas.width = maxWidth;
   canvas.height = canvasHeight;
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, maxWidth, canvasHeight);
-  ctx.fillStyle = '#000000';
+  ctx.fillStyle = "#000000";
 
   // Render each glyph using Path2D from HarfBuzz SVG path data
   for (let li = 0; li < lines.length; li++) {

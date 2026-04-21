@@ -2,15 +2,14 @@
   "name": "font-test",
   "version": "1.0.0",
   "description": "A static, client-side web page for previewing OpenType and TrueType fonts using HarfBuzz WASM.",
-  "type": "module",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
   "scripts": {
     "build": "node build.js",
     "start": "pnpm run build && pnpm serve dist"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "devDependencies": {
     "harfbuzzjs": "^0.10.3",
     "serve": "^14.2.6"

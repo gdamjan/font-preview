@@ -1,59 +1,61 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="mk">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Font Preview</title>
-<link rel="stylesheet" href="style.css">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Font Preview</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <h1>🔤 Font Preview</h1>
 
-<h1>🔤 Font Preview</h1>
+    <div id="drop-zone">
+      <div class="icon">📂</div>
+      <p>Drop a <strong>.ttf</strong> or <strong>.otf</strong> font file here</p>
+      <p style="font-size: 0.85rem; margin-top: 0.5rem; color: #777">or click to browse</p>
+      <input type="file" id="file-input" accept=".ttf,.otf,.woff,.woff2" hidden />
+    </div>
 
-<div id="drop-zone">
-  <div class="icon">📂</div>
-  <p>Drop a <strong>.ttf</strong> or <strong>.otf</strong> font file here</p>
-  <p style="font-size:0.85rem;margin-top:0.5rem;color:#777">or click to browse</p>
-  <input type="file" id="file-input" accept=".ttf,.otf,.woff,.woff2" hidden>
-</div>
+    <div id="font-info"></div>
 
-<div id="font-info"></div>
+    <div id="controls">
+      <label
+        >Size:
+        <input type="number" id="font-size" value="48" min="8" max="200" />
+      </label>
+      <label
+        >Preset:
+        <select id="char-preset">
+          <option value="cyrillic-mk">Cyrillic (б в г д ѓ п т з к ѐ ѝ)</option>
+          <option value="cyrillic-all">Cyrillic (all)</option>
+          <option value="latin">Latin (ASCII 32–126)</option>
+          <option value="upper">Uppercase A–Z</option>
+          <option value="lower">Lowercase a–z</option>
+          <option value="digits">Digits 0–9</option>
+          <option value="punctuation">Punctuation</option>
+          <option value="extended">Latin Extended (32–255)</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </label>
+      <label
+        >locl:
+        <select id="locl-lang">
+          <option value="">off</option>
+        </select>
+      </label>
+      <label style="flex: 1; display: none" id="custom-label"
+        >Characters:
+        <input type="text" id="custom-chars" placeholder="Type characters to preview" />
+      </label>
+      <button id="copy-btn" title="Copy image to clipboard">📋 Copy</button>
+    </div>
 
-<div id="controls">
-  <label>Size:
-    <input type="number" id="font-size" value="48" min="8" max="200">
-  </label>
-  <label>Preset:
-    <select id="char-preset">
-      <option value="cyrillic-mk">Cyrillic (б в г д ѓ п т з к ѐ ѝ)</option>
-      <option value="cyrillic-all">Cyrillic (all)</option>
-      <option value="latin">Latin (ASCII 32–126)</option>
-      <option value="upper">Uppercase A–Z</option>
-      <option value="lower">Lowercase a–z</option>
-      <option value="digits">Digits 0–9</option>
-      <option value="punctuation">Punctuation</option>
-      <option value="extended">Latin Extended (32–255)</option>
-      <option value="custom">Custom…</option>
-    </select>
-  </label>
-  <label>locl:
-    <select id="locl-lang">
-      <option value="">off</option>
-    </select>
-  </label>
-  <label style="flex:1;display:none" id="custom-label">Characters:
-    <input type="text" id="custom-chars" placeholder="Type characters to preview">
-  </label>
-  <button id="copy-btn" title="Copy image to clipboard">📋 Copy</button>
-</div>
+    <div id="canvas-wrap">
+      <canvas id="preview"></canvas>
+    </div>
 
-<div id="canvas-wrap">
-  <canvas id="preview"></canvas>
-</div>
-
-<script src="lib/hb.js"></script>
-<script src="lib/hbjs.js"></script>
-<script type="module" src="app.js"></script>
-
-</body>
+    <script src="lib/hb.js"></script>
+    <script src="lib/hbjs.js"></script>
+    <script type="module" src="app.js"></script>
+  </body>
 </html>
