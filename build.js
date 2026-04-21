@@ -10,7 +10,7 @@ fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(path.join(DIST, 'lib'), { recursive: true });
 
 // Copy app files from src/
-for (const file of ['index.html', 'app.js', 'style.css']) {
+for (const file of ['index.html', 'app.js', 'load-font.js', 'render.js', 'style.css']) {
   fs.copyFileSync(path.join(SRC, file), path.join(DIST, file));
 }
 
