@@ -9,6 +9,7 @@ const fontSizeInput = document.getElementById('font-size');
 const charPresetSelect = document.getElementById('char-preset');
 const customCharsInput = document.getElementById('custom-chars');
 const customLabel = document.getElementById('custom-label');
+const loclLangSelect = document.getElementById('locl-lang');
 
 let hb = null;
 let loadedFontBuffer = null;
@@ -69,8 +70,33 @@ async function loadFont(file) {
 
   const familyName = face.getName(1, 'en') || face.getName(1, '') || `CustomFont${++fontCounter}`;
   const version = face.getName(5, 'en') || face.getName(5, '') || 'Unknown';
-  const gsubFeatures = face.getTableFeatureTags('GSUB');
-  const hasLocl = gsubFeatures.includes('locl') ? 'Yes' : 'No';
+
+  // Discover which script/language combinations have a 'locl' feature
+  const loclLangs = [];
+  const scripts = face.getTableScriptTags('GSUB');
+  scripts.forEach((script, si) => {
+    const langs = face.getScriptLanguageTags('GSUB', si);
+    langs.forEach((lang, li) => {
+      const features = face.getLanguageFeatureTags('GSUB', si, li);
+      if (features.includes('locl')) {
+        loclLangs.push({ script: script.trim(), lang: lang.trim() });
+      }
+    });
+  });
+
+  // Populate the locl dropdown
+  loclLangSelect.innerHTML = '<option value="">off</option>';
+  for (const { script, lang } of loclLangs) {
+    const opt = document.createElement('option');
+    opt.value = `${script}/${lang}`;
+    opt.textContent = `${lang} (${script})`;
+    loclLangSelect.appendChild(opt);
+  }
+  // Auto-select MKD if available
+  const mkdOption = [...loclLangSelect.options].find(o => o.value.includes('MKD'));
+  if (mkdOption) mkdOption.selected = true;
+
+  const hasLocl = loclLangs.length > 0 ? 'Yes' : 'No';
 
   font.destroy();
   face.destroy();
@@ -89,7 +115,6 @@ function render() {
 
   const fontSize = parseInt(fontSizeInput.value) || 48;
   const text = getChars();
-  const preset = charPresetSelect.value;
   const padding = 20;
   const maxWidth = 760;
 
@@ -104,16 +129,17 @@ function render() {
   const extents = font.hExtents();
   const ascender = extents.ascender * scale;
 
-  // Determine OpenType features based on preset
-  const features = preset === 'cyrillic-mk' ? 'locl' : '';
-
-  // Shape the text
+  // Determine script/language/features from the locl dropdown
   const buffer = hb.createBuffer();
   buffer.addText(text);
-  if (preset === 'cyrillic-mk' || preset === 'cyrillic-all') {
-    buffer.setScript('Cyrl');
-    buffer.setLanguage('mk');
+  const loclValue = loclLangSelect.value; // e.g. "cyrl/MKD" or ""
+  let features = '';
+  if (loclValue) {
+    const [script, lang] = loclValue.split('/');
+    buffer.setScript(script);
+    buffer.setLanguage(lang);
     buffer.setDirection('ltr');
+    features = 'locl';
   } else {
     buffer.guessSegmentProperties();
   }
@@ -183,3 +209,4 @@ charPresetSelect.addEventListener('change', () => {
   render();
 });
 customCharsInput.addEventListener('input', render);
+loclLangSelect.addEventListener('change', render);
