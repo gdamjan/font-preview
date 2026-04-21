@@ -7,7 +7,7 @@ settings:
 importers:
 
   .:
-    dependencies:
+    devDependencies:
       harfbuzzjs:
         specifier: ^0.10.3
         version: 0.10.3
