@@ -73,6 +73,19 @@
     border-radius: 6px;
     font-size: 0.9rem;
   }
+  #copy-btn {
+    background: #2a2a3e;
+    border: 1px solid #444;
+    color: #e0e0e0;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+  #copy-btn:hover { background: #3a3a5e; }
+  #copy-btn.copied { background: #2e7d32; border-color: #4caf50; }
 
   #canvas-wrap {
     max-width: 800px;
@@ -125,6 +138,7 @@
   <label style="flex:1;display:none" id="custom-label">Characters:
     <input type="text" id="custom-chars" placeholder="Type characters to preview">
   </label>
+  <button id="copy-btn" title="Copy image to clipboard">📋 Copy</button>
 </div>
 
 <div id="canvas-wrap">

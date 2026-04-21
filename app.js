@@ -10,6 +10,7 @@ const charPresetSelect = document.getElementById('char-preset');
 const customCharsInput = document.getElementById('custom-chars');
 const customLabel = document.getElementById('custom-label');
 const loclLangSelect = document.getElementById('locl-lang');
+const copyBtn = document.getElementById('copy-btn');
 
 let hb = null;
 let loadedFontBuffer = null;
@@ -210,3 +211,16 @@ charPresetSelect.addEventListener('change', () => {
 });
 customCharsInput.addEventListener('input', render);
 loclLangSelect.addEventListener('change', render);
+copyBtn.addEventListener('click', async () => {
+  try {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    copyBtn.textContent = '✓ Copied';
+    copyBtn.classList.add('copied');
+    setTimeout(() => { copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 1500);
+  } catch (err) {
+    console.error('Copy failed:', err);
+    copyBtn.textContent = '⚠ Failed';
+    setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 1500);
+  }
+});
