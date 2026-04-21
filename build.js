@@ -2,15 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 const DIST = path.join(__dirname, 'dist');
+const SRC = path.join(__dirname, 'src');
 const HB = path.join(__dirname, 'node_modules', 'harfbuzzjs');
 
 // Clean and create dist/
 fs.rmSync(DIST, { recursive: true, force: true });
 fs.mkdirSync(path.join(DIST, 'lib'), { recursive: true });
 
-// Copy app files
-for (const file of ['index.html', 'app.js']) {
-  fs.copyFileSync(path.join(__dirname, file), path.join(DIST, file));
+// Copy app files from src/
+for (const file of ['index.html', 'app.js', 'style.css']) {
+  fs.copyFileSync(path.join(SRC, file), path.join(DIST, file));
 }
 
 // Copy HarfBuzz WASM runtime from node_modules
