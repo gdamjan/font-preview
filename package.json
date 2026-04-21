@@ -5,8 +5,7 @@
   "main": "app.js",
   "scripts": {
     "build": "node build.js",
-    "start": "npm run build && npx serve dist",
-    "serve": "npx serve dist"
+    "start": "pnpm run build && pnpm serve dist"
   },
   "keywords": [],
   "author": "",
