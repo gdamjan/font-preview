@@ -1,56 +1,41 @@
 # Font Preview
 
-A static, client-side web page for previewing OpenType and TrueType fonts. Drop a font file and instantly see it rendered on a canvas — no server required.
+A static, client-side web page for previewing OpenType and TrueType fonts.
+Drop a font file and see it rendered on a canvas using **HarfBuzz WASM** for text shaping.
 
 ## Features
 
 - **Drag & drop** (or click to browse) for `.ttf`, `.otf`, `.woff`, `.woff2` files
-- **Canvas rendering** of characters with configurable font size and color
+- **HarfBuzz WASM** for text shaping — glyph outlines are rendered directly via Canvas `Path2D`, bypassing the browser's text engine entirely
+- **OpenType feature support** — `locl` (localized forms) for Macedonian Cyrillic is activated through HarfBuzz's shaper, not CSS hacks
 - **Character presets:**
-  - Cyrillic MK (`б в г д ѓ п т з к ѐ ѝ`) — with OpenType `locl` feature enabled
+  - Cyrillic MK (`б в г д ѓ п т з к ѐ ѝ`) — shaped with `script=Cyrl`, `language=mk`, `locl` feature
   - Full Cyrillic (U+0400–U+04FF)
   - Latin ASCII, uppercase, lowercase, digits, punctuation, extended Latin
   - Custom text input
-- **OpenType `locl` (localized forms)** for Macedonian, rendered via SVG foreignObject to activate the browser's text shaper with `lang="mk"` and `font-feature-settings: 'locl'`
-- **Font metadata** parsed from the binary:
-  - Family name (from the `name` table, nameID 1)
-  - Version string (nameID 5)
-  - Italic flag (from `OS/2` fsSelection or `head` macStyle)
+- **Font metadata** read via HarfBuzz from the `name` table (family name, version) and GSUB feature tags
 
 ## Usage
 
-Open `index.html` in any modern browser. No build step or server needed.
-
 ```sh
-# or simply double-click index.html
-xdg-open index.html
+pnpm install
+pnpm build       # creates dist/
+pnpm serve       # serve dist/ locally
+# or: pnpm start (builds then serves)
 ```
 
 ## How it works
 
 1. The dropped font file is read as an `ArrayBuffer`
-2. Font metadata is parsed directly from the binary (table directory, `name`, `OS/2`, `head` tables)
-3. The font is registered via the [CSS Font Loading API](https://developer.mozilla.org/en-US/docs/Web/API/FontFace) (`FontFace`)
-4. Characters are rendered on a `<canvas>` using `fillText`
-5. For Macedonian localized forms, an SVG `foreignObject` pipeline is used — the font is embedded as base64 in an `@font-face` rule inside the SVG, with `lang="mk"` and `font-feature-settings: 'locl'` on the text element
+2. **HarfBuzz WASM** (`harfbuzzjs`) loads the font binary into a `Blob → Face → Font`
+3. Text is shaped with `hb.shape(font, buffer, features)` — HarfBuzz performs glyph substitution (GSUB) and positioning (GPOS)
+4. For each shaped glyph, the outline is extracted as an SVG path string via `font.glyphToPath(glyphId)`
+5. Paths are drawn on a `<canvas>` using `Path2D`, with proper coordinate transforms (font units → pixels, Y-axis flip)
 
 ## Browser support
 
 Works in all modern browsers (Chrome, Firefox, Safari, Edge). Requires support for:
-- `FontFace` API
+- WebAssembly
+- Canvas `Path2D` with SVG path data
 - `DataView` / `ArrayBuffer`
-- SVG `foreignObject` (for `locl` rendering)
 
-## What is the OS/2 table?
-
-The **OS/2** table is a required table in TrueType and OpenType fonts that contains metrics and properties needed by Windows (originally OS/2) for font selection and layout. Key fields include:
-
-- **fsSelection** — style flags (italic, bold, regular, etc.)
-- **usWeightClass** — weight (100=Thin … 700=Bold … 900=Black)
-- **usWidthClass** — stretch (condensed, normal, expanded)
-- **Panose** — 10-byte classification describing the font's visual style
-- **Unicode/codepage ranges** — bitmasks indicating which character sets the font supports
-- **Metrics** — typographic ascender, descender, line gap, x-height, cap height
-- **Vendor ID** — 4-character tag identifying the font vendor
-
-The name is historical — it dates back to IBM's OS/2 operating system, but it became the standard metadata table for all platforms.
