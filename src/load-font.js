@@ -26,8 +26,7 @@ export async function loadFont(hb, file) {
     throw new Error('Unsupported file type. Please use .ttf, .otf, .woff, or .woff2');
   }
 
-  const arrayBuffer = await file.arrayBuffer();
-  const fontBuffer = new Uint8Array(arrayBuffer);
+  const fontBuffer = await file.bytes();
 
   const blob = hb.createBlob(fontBuffer);
   const face = hb.createFace(blob, 0);
