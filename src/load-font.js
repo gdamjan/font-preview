@@ -1,8 +1,24 @@
+/** @import { HarfBuzz } from './types.js' */
+
 /**
  * Load a font file into HarfBuzz and extract metadata.
- * @param {object} hb - harfbuzzjs instance
- * @param {File} file
- * @returns {{ fontBuffer: Uint8Array, familyName: string, version: string, loclLangs: Array<{script: string, lang: string}> }}
+ *
+ * Reads the font binary, creates temporary HarfBuzz objects (blob → face → font)
+ * to extract the family name, version string, and all script/language combinations
+ * in the GSUB table that include a `locl` (localized forms) feature.
+ *
+ * @param {HarfBuzz} hb - Initialized harfbuzzjs instance (the object returned by `hbjs(module)`).
+ * @param {File} file - A font file from a file input or drag-and-drop event.
+ *   Accepted extensions: `.ttf`, `.otf`, `.woff`, `.woff2`.
+ * @returns {Promise<{
+ *   fontBuffer: Uint8Array,
+ *   familyName: string,
+ *   version: string,
+ *   loclLangs: Array<{ script: string, lang: string }>,
+ *   fileSize: number
+ * }>} Resolves with the raw font bytes, parsed metadata, and the list of
+ *   script/language pairs that support `locl` (e.g. `{ script: "cyrl", lang: "MKD" }`).
+ * @throws {Error} If the file extension is not a supported font format.
  */
 export async function loadFont(hb, file) {
   const ext = file.name.split('.').pop().toLowerCase();

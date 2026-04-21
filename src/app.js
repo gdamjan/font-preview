@@ -1,3 +1,5 @@
+/** @import { HarfBuzz } from './types.js' */
+
 import { loadFont } from './load-font.js';
 import { render } from './render.js';
 
@@ -14,6 +16,7 @@ const customLabel = document.getElementById('custom-label');
 const loclLangSelect = document.getElementById('locl-lang');
 const copyBtn = document.getElementById('copy-btn');
 
+/** @type {HarfBuzz | null} */
 let hb = null;
 let fontBuffer = null;
 

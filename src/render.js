@@ -1,9 +1,29 @@
+/** @import { HarfBuzz } from './types.js' */
+
 /**
  * Shape text with HarfBuzz and render glyph outlines on a canvas.
- * @param {object} hb - harfbuzzjs instance
- * @param {HTMLCanvasElement} canvas
- * @param {Uint8Array} fontBuffer
- * @param {{ fontSize: number, text: string, loclValue: string }} options
+ *
+ * Creates HarfBuzz shaping objects from the font buffer, shapes the input text
+ * (optionally applying the OpenType `locl` feature for a specific script/language),
+ * then draws each glyph outline on the canvas using `Path2D`.
+ *
+ * Glyph paths are extracted in font units via `font.glyphToPath()` and rendered
+ * with a coordinate transform that scales from font units (upem) to pixels and
+ * flips the Y axis (font coordinates point up, canvas coordinates point down).
+ *
+ * Lines are wrapped automatically to fit within a 760 px canvas width.
+ *
+ * @param {HarfBuzz} hb - Initialized harfbuzzjs instance (the object returned by `hbjs(module)`).
+ * @param {HTMLCanvasElement} canvas - The canvas element to draw on.
+ *   Its width and height are set automatically based on the shaped output.
+ * @param {Uint8Array} fontBuffer - Raw font file bytes (the same buffer returned
+ *   by {@link loadFont}).
+ * @param {object} options
+ * @param {number} options.fontSize - Desired font size in pixels.
+ * @param {string} options.text - The text string to shape and render.
+ * @param {string} options.loclValue - A `"script/lang"` string (e.g. `"cyrl/MKD"`)
+ *   to activate the `locl` feature, or an empty string to let HarfBuzz guess
+ *   segment properties automatically.
  */
 export function render(hb, canvas, fontBuffer, { fontSize, text, loclValue }) {
   const ctx = canvas.getContext('2d');
